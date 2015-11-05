@@ -2,6 +2,10 @@ require "base/internal/ui/reflexcore"
 
 VoiceOver =
 {
+    countPlayed = {false, false, false};
+    oldLogId = 0;
+    delayTimer = 0;
+
     canPosition = false;
     userData = {};
 };
@@ -14,11 +18,27 @@ function VoiceOver:initialize()
     CheckSetDefaultValue(self.userData, "volume", "number", 3);
     CheckSetDefaultValue(self.userData, "delay", "number", 1.5);
     CheckSetDefaultValue(self.userData, "voice", "string", "female");
-    CheckSetDefaultValue(self.userData, "voiceselect", "table", {false, true, false});
+    CheckSetDefaultValue(self.userData, "voiceSelect", "table", {false, true, false});
+    CheckSetDefaultValue(self.userData, "playCountVoice", "boolean", true);
+    CheckSetDefaultValue(self.userData, "playCTFVoice", "boolean", true);
 end
 
-local oldLogId = 0
-local delayTimer = 0
+function VoiceOver:countVoiceEvent()
+    local timeRemaining = world.gameTimeLimit - world.gameTime
+    local t = FormatTime(timeRemaining)
+
+    -- this flicks to 0 some times, just clamp it to 1
+    t.seconds = math.max(1, t.seconds)
+
+    if (t.seconds > 3) then
+      self.countPlayed = {false, false, false}
+    else
+      if self.countPlayed[t.seconds] == false then
+        for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/count-" .. t.seconds) end
+        self.countPlayed[t.seconds] = true
+      end
+    end
+end
 
 function VoiceOver:ctfVoiceEvent(player)
     local logCount = 0
@@ -29,57 +49,51 @@ function VoiceOver:ctfVoiceEvent(player)
     for i = 1, logCount do
       local logEntry = log[i]
 
-      if logEntry.type == LOG_TYPE_CTFEVENT then
+      if (logEntry.type == LOG_TYPE_CTFEVENT) and (self.oldLogId < logEntry.id) and (self.userData.delay <= self.delayTimer) then
         if logEntry.ctfEvent == CTF_EVENT_CAPTURE then
-          if (oldLogId < logEntry.id) and (self.userData.delay <= delayTimer) then
-            if logEntry.ctfTeamIndex == player.team then
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-capture") end
-            else
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-capture") end
-            end
-
-            oldLogId = logEntry.id
-            delayTimer = 0
+          if logEntry.ctfTeamIndex == player.team then
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-capture") end
+          else
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-capture") end
           end
         end
 
         if logEntry.ctfEvent == CTF_EVENT_RETURN then
-          if (oldLogId < logEntry.id) and (self.userData.delay <= delayTimer) then
-            if logEntry.ctfTeamIndex == player.team then
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-return") end
-            else
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-return") end
-            end
-
-            oldLogId = logEntry.id
-            delayTimer = 0
+          if logEntry.ctfTeamIndex == player.team then
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-return") end
+          else
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-return") end
           end
         end
 
         if logEntry.ctfEvent == CTF_EVENT_PICKUP then
-          if (oldLogId < logEntry.id) and (self.userData.delay <= delayTimer) then
-            if logEntry.ctfTeamIndex == player.team then
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag")end
-            else
-              for i = 1, self.userData.volume, 1 do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-hasflag") end
-            end
-
-            oldLogId = logEntry.id
-            delayTimer = 0
+          if logEntry.ctfTeamIndex == player.team then
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag")end
+          else
+            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-hasflag") end
           end
+        end
+
+        if not (logEntry.ctfEvent == CTF_EVENT_DROPPED) then -- don't let drops cause voice delay
+          self.oldLogId = logEntry.id
+          self.delayTimer = 0
         end
       end
     end
 
-    delayTimer = delayTimer + deltaTimeRaw
-    if delayTimer > 60 then delayTimer = self.userData.delay end
+    self.delayTimer = self.delayTimer + deltaTimeRaw
+    if self.delayTimer > 60 then self.delayTimer = self.userData.delay end
 end
 
 function VoiceOver:draw()
     local player = getPlayer()
     local gameMode = gamemodes[world.gameModeIndex].shortName
 
-    if gameMode == "ctf" then
+    if self.userData.playCountVoice and world.timerActive and (world.gameState == GAME_STATE_WARMUP or world.gameState == GAME_STATE_ROUNDPREPARE) then
+      self:countVoiceEvent()
+    end
+
+    if self.userData.playCTFVoice and gameMode == "ctf" then
       self:ctfVoiceEvent(player)
     end
 end
@@ -90,41 +104,48 @@ function VoiceOver:drawOptions(x, y)
 
     local user = self.userData
 
-    uiLabel("Volume", x, y);
+    uiLabel("Volume", x, y)
     user.volume = round(uiSlider(x + sliderStart, y, sliderWidth, 1, 10, user.volume))
     round(uiEditBox(user.volume, x + sliderStart + sliderWidth + 10, y, 60))
-    y = y + 40;
+    y = y + 40
 
-    uiLabel("Delay", x, y);
+    uiLabel("Delay", x, y)
     user.delay = clampTo2Decimal(uiSlider(x + sliderStart, y, sliderWidth, 0, 3, user.delay))
     user.delay = clampTo2Decimal(uiEditBox(user.delay, x + sliderStart + sliderWidth + 10, y, 60))
-    y = y + 40;
+    y = y + 40
 
-    uiLabel("Voice:", x + 10, y);
-    y = y + 35;
+    uiLabel("Voice:", x + 10, y)
+    y = y + 35
 
-    if uiCheckBox(user.voiceselect[1], "Male", x, y) then
-      user.voiceselect[1] = true
-      user.voiceselect[2] = false
-      user.voiceselect[3] = false
+    if uiCheckBox(user.voiceSelect[1], "Male", x, y) then
+      user.voiceSelect[1] = true
+      user.voiceSelect[2] = false
+      user.voiceSelect[3] = false
       user.voice = "male"
     end
-    y = y + 35;
+    y = y + 35
 
-    if uiCheckBox(user.voiceselect[2], "Female", x, y) then
-      user.voiceselect[1] = false
-      user.voiceselect[2] = true
-      user.voiceselect[3] = false
+    if uiCheckBox(user.voiceSelect[2], "Female", x, y) then
+      user.voiceSelect[1] = false
+      user.voiceSelect[2] = true
+      user.voiceSelect[3] = false
       user.voice = "female"
     end
-    y = y + 35;
+    y = y + 35
 
-    if uiCheckBox(user.voiceselect[3], "Android", x, y) then
-      user.voiceselect[1] = false
-      user.voiceselect[2] = false
-      user.voiceselect[3] = true
+    if uiCheckBox(user.voiceSelect[3], "Android", x, y) then
+      user.voiceSelect[1] = false
+      user.voiceSelect[2] = false
+      user.voiceSelect[3] = true
       user.voice = "android"
     end
+    y = y + 40
+
+    uiLabel("Voice Events:", x + 10, y)
+    y = y + 35
+    user.playCountVoice = uiCheckBox(user.playCountVoice, "Countdown", x, y)
+    y = y + 35
+    user.playCTFVoice = uiCheckBox(user.playCTFVoice , "CTF", x, y)
 
     saveUserData(user)
 end
