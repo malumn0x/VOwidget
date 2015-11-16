@@ -68,11 +68,11 @@ function VoiceOver:ctfVoiceEvent(player)
 
         if logEntry.ctfEvent == CTF_EVENT_PICKUP then
           if logEntry.ctfTeamIndex == player.team then
-              if player.hasFlag then
-                  for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/player-hasflag") end
-              else
-                  for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag") end
-              end
+            if player.hasFlag then
+              for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/player-hasflag") end
+            else
+              for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag") end
+            end
           else
             for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-hasflag") end
           end
