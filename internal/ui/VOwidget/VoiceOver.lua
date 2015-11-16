@@ -144,7 +144,6 @@ function VoiceOver:drawOptions(x, y)
       user.voiceSelect[2] = false
       user.voiceSelect[3] = true
     end
-    y = y + 35
     user.voice = uiEditBox(user.voice, x + 100, y, 80)
     y = y + 50
 
