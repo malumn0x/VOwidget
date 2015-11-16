@@ -18,7 +18,7 @@ function VoiceOver:initialize()
     CheckSetDefaultValue(self.userData, "volume", "number", 3);
     CheckSetDefaultValue(self.userData, "delay", "number", 1.5);
     CheckSetDefaultValue(self.userData, "voice", "string", "female");
-    CheckSetDefaultValue(self.userData, "voiceSelect", "table", {false, true, false});
+    CheckSetDefaultValue(self.userData, "voiceSelect", "table", {true, false, false});
     CheckSetDefaultValue(self.userData, "playCountVoice", "boolean", true);
     CheckSetDefaultValue(self.userData, "playCTFVoice", "boolean", true);
 end
@@ -68,7 +68,11 @@ function VoiceOver:ctfVoiceEvent(player)
 
         if logEntry.ctfEvent == CTF_EVENT_PICKUP then
           if logEntry.ctfTeamIndex == player.team then
-            for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag")end
+              if player.hasFlag then
+                  for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/player-hasflag") end
+              else
+                  for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/team-hasflag") end
+              end
           else
             for i = 1, self.userData.volume do playSound("internal/ui/VOwidget/vox/" .. self.userData.voice .. "/enemy-hasflag") end
           end
@@ -114,34 +118,35 @@ function VoiceOver:drawOptions(x, y)
     uiLabel("Delay", x, y)
     user.delay = clampTo2Decimal(uiSlider(x + sliderStart, y, sliderWidth, 0, 3, user.delay))
     user.delay = clampTo2Decimal(uiEditBox(user.delay, x + sliderStart + sliderWidth + 10, y, 60))
-    y = y + 40
+    y = y + 50
 
     uiLabel("Voice:", x + 10, y)
     y = y + 35
 
-    if uiCheckBox(user.voiceSelect[1], "Male", x, y) then
+    if uiCheckBox(user.voiceSelect[1], "Female", x, y) then
       user.voiceSelect[1] = true
       user.voiceSelect[2] = false
-      user.voiceSelect[3] = false
-      user.voice = "male"
-    end
-    y = y + 35
-
-    if uiCheckBox(user.voiceSelect[2], "Female", x, y) then
-      user.voiceSelect[1] = false
-      user.voiceSelect[2] = true
       user.voiceSelect[3] = false
       user.voice = "female"
     end
     y = y + 35
 
-    if uiCheckBox(user.voiceSelect[3], "Android", x, y) then
+    if uiCheckBox(user.voiceSelect[2], "Android", x, y) then
+      user.voiceSelect[1] = false
+      user.voiceSelect[2] = true
+      user.voiceSelect[3] = false
+      user.voice = "android"
+    end
+    y = y + 35
+
+    if uiCheckBox(user.voiceSelect[3], "Other:", x, y) then
       user.voiceSelect[1] = false
       user.voiceSelect[2] = false
       user.voiceSelect[3] = true
-      user.voice = "android"
     end
-    y = y + 40
+    y = y + 35
+    user.voice = uiEditBox(user.voice, x + 100, y, 80)
+    y = y + 50
 
     uiLabel("Voice Events:", x + 10, y)
     y = y + 35
