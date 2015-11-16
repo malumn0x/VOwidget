@@ -87,6 +87,8 @@ end
 
 function VoiceOver:draw()
     local player = getPlayer()
+    if not player then return end
+
     local gameMode = gamemodes[world.gameModeIndex].shortName
 
     if self.userData.playCountVoice and world.timerActive and (world.gameState == GAME_STATE_WARMUP or world.gameState == GAME_STATE_ROUNDPREPARE) then
