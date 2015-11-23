@@ -287,7 +287,7 @@ function VoiceOver:draw()
 
       if self.userData.playLeadVoice and world.gameState == GAME_STATE_ACTIVE and (gameModeName == "1v1" or gameModeName == "ffa") then
         -- spec view causes problems
-        if localPlayer.state ~= PLAYER_STATE_SPECTATOR then
+        if localPlayer.state ~= PLAYER_STATE_SPECTATOR and localPlayer.state ~= PLAYER_STATE_QUEUED then
           self:leadVoiceEvent(player, logEntry)
         end
       end
